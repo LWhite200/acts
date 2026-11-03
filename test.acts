@@ -1,0 +1,62 @@
+# Test file for the Acts Lexer
+
+# Testing all new keywords and constructs
+
+
+
+fn add(x) {
+
+    let result = x + 10.5
+
+    return result
+
+}
+
+
+
+# Test logic operators and keywords
+
+if true and not false or nil {
+
+    print result % 2
+
+} else {
+
+    while x {
+
+        let identifier_name = 100
+
+    }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
