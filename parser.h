@@ -17,8 +17,8 @@ public:
     // // and wiping the old one clean
     explicit Parser(std::vector<Token> tokens) : tokens_(std::move(tokens)) {}
 
-    // IDK if this is where it should be
-    ExprPtr parseExpression() { return parsePrimary(); }
+    // Entry point: Start checking for + and - first (which will then check for * and /)
+    ExprPtr parseExpression() { return parseTerm(); }
 
 private:
 
@@ -53,6 +53,46 @@ private:
         return true;
     }
 
+
+    // [5] --------------------------------------------------------------
+
+    bool matchAny(std::initializer_list<TokenType> types) {
+        for (TokenType t : types) {
+            if (match(t)) return true;
+        }
+        return false;
+    }
+
+    int lastLine() const { return current_ > 0 ? previous().line : peek().line; }
+
+    const Token& consume(TokenType type, const std::string& message) {
+        if (check(type)) return advance();
+        throw ParseError{ lastLine(), message + " Found " + found() + "." };
+    }
+
+    ExprPtr parseTerm() {
+        ExprPtr left = parseFactor();
+        while (matchAny({ TokenType::Plus, TokenType::Minus })) {
+            Token op = previous();
+            ExprPtr right = parseFactor();
+            left = std::make_unique<BinaryExpr>(std::move(left), op, std::move(right));
+        }
+        return left;
+    }
+
+    ExprPtr parseFactor() {
+        ExprPtr left = parsePrimary();
+        while (matchAny({ TokenType::Star, TokenType::Slash })) {
+            Token op = previous();
+            ExprPtr right = parsePrimary();
+            left = std::make_unique<BinaryExpr>(std::move(left), op, std::move(right));
+        }
+        return left;
+    }
+
+    // ---------------------------------------------------------------------------
+
+
     // debug message
     std::string found() const {
         return isAtEnd() ? "end of file" : "'" + peek().text + "'";
@@ -82,8 +122,33 @@ private:
         if (match(TokenType::False)) {
             return std::make_unique<BoolExpr>(false, previous().line);
         }
+
+        // if nil
+        if (match(TokenType::Nil)) {
+            return std::make_unique<NilExpr>(previous().line);
+        }
+
+
+
+
+
+        if (match(TokenType::LeftParen)) {
+            ExprPtr inner = parseExpression();
+            consume(TokenType::RightParen, "Expect ')' after expression.");
+            return inner;
+        }
+
+
+
+
+
         throw ParseError{ peek().line, "Expect expression. Found " + found() + "." };
     }
 };
+
+
+
+
+
 
 #endif // PARSER_H

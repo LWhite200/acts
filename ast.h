@@ -93,9 +93,45 @@ struct BoolExpr : Expr {
     std::string print() const override { return value ? "true" : "false"; }
 };
 
+
+// Nil
+struct NilExpr : Expr {
+    NilExpr(int line) : Expr(line) {}
+    std::string print() const override { return "nil"; }
+};
+
 struct ParseError {
     int line;
     std::string message;
 };
+
+// operator [left child] token - right child
+struct BinaryExpr : Expr {
+
+    ExprPtr left;
+    Token op;
+    ExprPtr right;
+
+    // Constructor taking in three arguments
+    // Creates ...
+    BinaryExpr(ExprPtr left, Token op, ExprPtr right)
+        // Expr(op.line): Calls the constructor of the parent class (Expr), 
+        // passing the line number where the operator appears
+        // so the base class can track its position.
+        //
+        //std::move transfers ownership of the incoming pointer parameter into 
+        // the class's member variable (this->left).
+        : Expr(op.line), left(std::move(left)), op(std::move(op)),
+        right(std::move(right)) {
+    }
+
+    // print() writes the operator first and then the children: (+ 1 2). 
+    // This notation is called an S-expression. Nesting becomes obvious at a glance:
+    // the parentheses are the tree.
+    std::string print() const override {
+        return "(" + op.text + " " + left->print() + " " + right->print() + ")";
+    }
+};
+
 
 #endif // AST_H
