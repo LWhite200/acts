@@ -273,7 +273,7 @@ private:
     }
 
 
-    // Need to avoid spaces, tabs, blanks
+    // Need to avoid spaces, tabs, blanks, and comments
     void skipWhitespaceAndComments() {
         while (!isAtEnd()) {
 
@@ -285,14 +285,20 @@ private:
                 advance();
             }
 
-            // if we hit an empty line, move on and increment line
+            // if we hit a newline, move on and increment line
             else if (c == '\n') {
                 line_++;
                 advance();
             }
 
-            // If we ran into a comment, go to the end of the line
+            // If we ran into a comment starting with '#' or '//', go to the end of the line
             else if (c == '#') {
+                while (!isAtEnd() && peek() != '\n') advance();
+            }
+            else if (c == '/' && peekNext() == '/') {
+                // Consume both slashes and everything up to the newline
+                advance(); // eat first '/'
+                advance(); // eat second '/'
                 while (!isAtEnd() && peek() != '\n') advance();
             }
 

@@ -17,13 +17,18 @@ public:
     // // and wiping the old one clean
     explicit Parser(std::vector<Token> tokens) : tokens_(std::move(tokens)) {}
 
+    // -- [1] Entry point, takes tokens and parses them.
     // Entry point: Start checking for + and - first (which will then check for * and /)
-    ExprPtr parseExpression() { return parseTerm(); }
+    //ExprPtr parseExpression() { return parseTerm(); }
+    //ExprPtr parseExpression() { return parseEquality(); }
+    ExprPtr parseExpression() { return parseLogicOr(); }
 
 private:
 
     // dynamic array (a growable list) that will hold elements of type Token.
     std::vector<Token> tokens_;
+
+    // the standard unsigned integer type used to represent the size of any object in memory
     size_t current_ = 0;
 
     // Look at current token
@@ -54,7 +59,7 @@ private:
     }
 
 
-    // [5] --------------------------------------------------------------
+    // --------------------------------------------------------------
 
     bool matchAny(std::initializer_list<TokenType> types) {
         for (TokenType t : types) {
@@ -70,6 +75,41 @@ private:
         throw ParseError{ lastLine(), message + " Found " + found() + "." };
     }
 
+
+
+
+
+
+    ExprPtr parseEquality() {
+        ExprPtr left = parseComparison();
+        while (matchAny({ TokenType::EqualEqual, TokenType::BangEqual })) {
+            Token op = previous();
+            ExprPtr right = parseComparison();
+            left = std::make_unique<BinaryExpr>(std::move(left), op, std::move(right));
+        }
+        return left;
+    }
+
+
+    ExprPtr parseComparison() {
+        ExprPtr left = parseTerm();
+        while (matchAny({ TokenType::Less, TokenType::LessEqual,
+                          TokenType::Greater, TokenType::GreaterEqual})) {
+            Token op = previous();
+            ExprPtr right = parseTerm();
+            left = std::make_unique<BinaryExpr>(std::move(left), op, std::move(right));
+        }
+        return left;
+    }
+
+
+
+
+
+
+
+
+    // -- [2]
     ExprPtr parseTerm() {
         ExprPtr left = parseFactor();
         while (matchAny({ TokenType::Plus, TokenType::Minus })) {
@@ -80,12 +120,56 @@ private:
         return left;
     }
 
+    // --- [3]
     ExprPtr parseFactor() {
-        ExprPtr left = parsePrimary();
-        while (matchAny({ TokenType::Star, TokenType::Slash })) {
+        ExprPtr left = parseUnary();
+        while (matchAny({ TokenType::Star, TokenType::Slash, TokenType::Percent })) {
             Token op = previous();
-            ExprPtr right = parsePrimary();
+            ExprPtr right = parseUnary();
             left = std::make_unique<BinaryExpr>(std::move(left), op, std::move(right));
+        }
+        return left;
+    }
+
+
+    ExprPtr parseUnary() {
+        if (matchAny({ TokenType::Minus, TokenType::Not })) {
+            Token op = previous();
+            ExprPtr right = parseUnary();
+            return std::make_unique<UnaryExpr>(op, std::move(right));
+        }
+        return parsePrimary();
+    }
+
+
+
+
+    // Parses logical OR expressions ('or'). 
+    // This sits at the bottom of the precedence ladder, evaluating last.
+    ExprPtr parseLogicOr() {
+        // Left-hand side must be at least a logical AND expression
+        ExprPtr left = parseLogicAnd();
+
+        // While we encounter 'or' operators, keep consuming and building LogicalExpr nodes
+        while (matchAny({ TokenType::Or })) {
+            Token op = previous();
+            ExprPtr right = parseLogicAnd();
+            left = std::make_unique<LogicalExpr>(std::move(left), op, std::move(right));
+        }
+        return left;
+    }
+
+    // Parses logical AND expressions ('and').
+    // Sits directly above equality/comparison and below logical OR.
+    ExprPtr parseLogicAnd() {
+        // Left-hand side must be at least an equality expression
+        ExprPtr left = parseEquality();
+
+        // While we encounter 'and' operators, keep consuming and building LogicalExpr nodes
+        while (matchAny({ TokenType::And })) {
+            Token op = previous();
+            ExprPtr right = parseEquality();
+            left = std::make_unique<LogicalExpr>(std::move(left), op, std::move(right));
         }
         return left;
     }
@@ -98,6 +182,7 @@ private:
         return isAtEnd() ? "end of file" : "'" + peek().text + "'";
     }
 
+    // --- [4]
     // Each mathch eats the token and builds one leaf node.
     // If nothing matches, we do not know what this token is doing here. so throw error
     // turn tokens into nodes

@@ -93,6 +93,46 @@ struct BoolExpr : Expr {
     std::string print() const override { return value ? "true" : "false"; }
 };
 
+// Like negatives
+struct UnaryExpr : Expr {
+
+    // representing the operator (e.g., - for negative, ! for logical NOT).
+    Token op;
+
+    // this right pointer can point to any valid expression object
+    ExprPtr right;
+    UnaryExpr(Token op, ExprPtr right) : Expr(op.line), op(std::move(op)), right(std::move(right)) {}
+    std::string print() const override {
+        return "(" + op.text + " " + right->print() + ")";
+    }
+};
+
+
+
+
+
+// Logical expressions (like 'and' or 'or') separated from BinaryExpr 
+// so the interpreter can handle short-circuit evaluation later.
+struct LogicalExpr : Expr {
+    ExprPtr left;
+    Token op;
+    ExprPtr right;
+
+    // Constructor taking in the left sub-expression, operator token, and right sub-expression.
+    // Uses std::move to transfer ownership of the pointers.
+    LogicalExpr(ExprPtr left, Token op, ExprPtr right)
+        : Expr(op.line), left(std::move(left)), op(std::move(op)), right(std::move(right)) {
+    }
+
+    // print() writes the operator first followed by both children: (and x y).
+    // Maintains the S-expression tree formatting.
+    std::string print() const override {
+        return "(" + op.text + " " + left->print() + " " + right->print() + ")";
+    }
+};
+
+
+
 
 // Nil
 struct NilExpr : Expr {
