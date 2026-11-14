@@ -80,25 +80,25 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    // Pass the stream of strings into the lexer and get a list of tokens
-    /*
-    [1] - Readfile and put it all into a string
-
-    [2] - Go through entire file and tokenize it
-
-    [3] - Create Parser instance with these tokens within it
-    */
     Parser parser(lexOrExit(readFile(argv[1])));
 
+    // Parse the entire file, collecting errors instead of stopping.
+    std::vector<StmtPtr> program = parser.parseProgram();
 
+    // Report every syntax error.
+    if (!parser.errors().empty()) {
+        for (const ParseError& error : parser.errors()) {
+            std::cerr << "[line " << error.line
+                << "] Parse error: " << error.message << "\n";
+        }
 
-    try {
-        ExprPtr tree = parser.parseExpression();
-        std::cout << tree->print() << "\n";
-    }
-    catch (const ParseError& e) {
-        std::cerr << "[line " << e.line << "] Parse error: " << e.message << "\n";
         return 1;
     }
+
+    // No errors: print the syntax trees.
+    for (const StmtPtr& statement : program) {
+        std::cout << statement->print(0) << "\n";
+    }
+
     return 0;
 }
